@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">LiveSearchAndroidTestApp</string>
+    <string name="search">Search for awesome GIFs…</string>
 </resources>
