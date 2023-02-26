@@ -232,7 +232,7 @@ class MainActivity : AppCompatActivity(), Runnable {
     }
 
     companion object {
-        const val API_KEY: String = "WSaZyFALW8NSTFfSZW6xpBW5CWGbNv4M"
+        const val API_KEY: String = ""
         const val SEARCH_RESULTS_PER_PAGE: Int = 50
         const val SEARCH_REQUEST_DELAY: Long = 300
         const val LOAD_MORE_ITEMS_OFFSET: Int = 13
