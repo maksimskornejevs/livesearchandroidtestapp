@@ -48,7 +48,9 @@ class MainActivity : AppCompatActivity(), Runnable {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
             override fun afterTextChanged(s: Editable?) {
-                if (!s.isNullOrEmpty()) {
+                val currentSearchTerm: String? = viewModel.searchTerm.value
+                val editedSearchTerm: String = s.toString()
+                if (editedSearchTerm.isNotEmpty() && currentSearchTerm != editedSearchTerm) {
                     viewModel.searchTermEvent.value = LiveDataEvent(s.toString())
                 }
             }
@@ -172,7 +174,7 @@ class MainActivity : AppCompatActivity(), Runnable {
         }
     }
 
-    fun loadSearchResults(searchTerm: String, offset: Int) {
+    private fun loadSearchResults(searchTerm: String, offset: Int) {
         if (!NetworkUtils.isNetworkAvailable(this@MainActivity)) {
             Toast.makeText(
                 this@MainActivity,
@@ -230,7 +232,7 @@ class MainActivity : AppCompatActivity(), Runnable {
     }
 
     companion object {
-        const val API_KEY: String = ""
+        const val API_KEY: String = "WSaZyFALW8NSTFfSZW6xpBW5CWGbNv4M"
         const val SEARCH_RESULTS_PER_PAGE: Int = 50
         const val SEARCH_REQUEST_DELAY: Long = 300
         const val LOAD_MORE_ITEMS_OFFSET: Int = 13
