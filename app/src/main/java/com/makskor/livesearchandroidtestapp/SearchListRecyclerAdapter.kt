@@ -1,10 +1,8 @@
 package com.makskor.livesearchandroidtestapp
 
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
-import androidx.databinding.ViewDataBinding
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.makskor.livesearchandroidtestapp.databinding.RecyclerviewGifImageHolderBinding
@@ -38,6 +36,10 @@ class SearchListRecyclerAdapter :
 
     fun setList(gifImages: List<GifImage>) {
         searchResults.clear()
+        searchResults.addAll(gifImages)
+    }
+
+    fun appendList(gifImages: List<GifImage>) {
         searchResults.addAll(gifImages)
     }
 

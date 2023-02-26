@@ -6,5 +6,7 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class GifImageSearchResult (
     @Json(name = "data")
-    val results: List<GifImageSearchResultItem>
+    val results: List<GifImageSearchResultItem>,
+    @Json(name = "pagination")
+    val pagination: GifImagePagination
 )
