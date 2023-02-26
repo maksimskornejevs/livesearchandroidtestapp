@@ -4,6 +4,10 @@ plugins {
     id 'kotlin-kapt'
 }
 
+def localPropertiesFile = rootProject.file("local.properties")
+def localProperties = new Properties()
+localProperties.load(new FileInputStream(localPropertiesFile))
+
 android {
     namespace 'com.makskor.livesearchandroidtestapp'
     compileSdk 33
@@ -16,6 +20,8 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GIPHY_API_KEY", localProperties['giphyapikey'])
     }
 
     buildTypes {
