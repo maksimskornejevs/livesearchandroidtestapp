@@ -11,7 +11,7 @@ import com.makskor.livesearchandroidtestapp.models.GifImage
 class SearchListRecyclerAdapter :
     RecyclerView.Adapter<SearchListRecyclerAdapter.GifImageViewHolder>() {
 
-    private val searchResults: ArrayList<GifImage> = ArrayList<GifImage>()
+    private val searchResults: ArrayList<GifImage> = ArrayList()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GifImageViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)

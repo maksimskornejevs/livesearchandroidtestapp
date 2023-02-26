@@ -4,11 +4,14 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.Adapter.StateRestorationPolicy
 import com.makskor.livesearchandroidtestapp.api.ApiClient
 import com.makskor.livesearchandroidtestapp.api.GifImageSearchService
 import com.makskor.livesearchandroidtestapp.databinding.ActivityMainBinding
@@ -24,7 +27,6 @@ import retrofit2.Retrofit
 class MainActivity : AppCompatActivity(), Runnable {
     private lateinit var binding: ActivityMainBinding
     val viewModel: MainActivityViewModel by viewModels()
-    private var searchResultsRecyclerAdapter: SearchListRecyclerAdapter? = null
     private var searchJobHandler: Handler? = null
     private var isLoadInProgress = false
 
@@ -37,13 +39,34 @@ class MainActivity : AppCompatActivity(), Runnable {
 
         initSearchResultsListRecylcerView()
         initInternalEventObservers()
+        initUserActionObservers()
+    }
+
+    private fun initUserActionObservers() {
+        binding.tvSearchBarInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                if (!s.isNullOrEmpty()) {
+                    viewModel.searchTermEvent.value = LiveDataEvent(s.toString())
+                }
+            }
+        })
     }
 
 
     private fun initSearchResultsListRecylcerView() {
-        searchResultsRecyclerAdapter = SearchListRecyclerAdapter()
-        binding.rwGifImagesSearchResults.layoutManager = GridLayoutManager(this, 2)
-        binding.rwGifImagesSearchResults.adapter = searchResultsRecyclerAdapter
+
+        if(viewModel.searchResultsRecyclerAdapter.value == null) {
+            viewModel.searchResultsRecyclerAdapter.value = SearchListRecyclerAdapter()
+            viewModel.searchResultsRecyclerAdapter.value!!.stateRestorationPolicy =
+                StateRestorationPolicy.PREVENT_WHEN_EMPTY
+        }
+
+        binding.rwGifImagesSearchResults.layoutManager =
+            GridLayoutManager(this, RECYCLER_VIEW_COLUMNS)
+        binding.rwGifImagesSearchResults.adapter = viewModel.searchResultsRecyclerAdapter.value
 
         binding.rwGifImagesSearchResults.addOnScrollListener(object :
             RecyclerView.OnScrollListener() {
@@ -51,36 +74,50 @@ class MainActivity : AppCompatActivity(), Runnable {
                 super.onScrolled(recyclerView, dx, dy)
 
                 val layoutManager = (recyclerView.layoutManager as GridLayoutManager)
-                val searchTerm: String? = viewModel.searchTerm.value
-                val searchResult: GifImageSearchResult? = viewModel.searchResult.value
+                var searchTerm: String? = null
+                var searchResult: GifImageSearchResult? = null
+
+
+                viewModel.searchTermEvent.value?.let {
+                    it.peekContent().let {
+                        searchTerm = it
+                    }
+                }
+
+                viewModel.searchResult.value?.let {
+                    it.peekContent().let {
+                        searchResult = it
+                    }
+                }
+
 
                 if (!isLoadInProgress &&
                     searchTerm != null &&
-                    searchTerm.isNotBlank() &&
+                    searchTerm!!.isNotBlank() &&
                     searchResult != null &&
-                    searchResult.pagination.totalCount > searchResult.pagination.offset &&
-                    layoutManager.findLastCompletelyVisibleItemPosition() >= searchResultsRecyclerAdapter?.itemCount!! - LOAD_MORE_ITEMS_OFFSET
+                    searchResult!!.pagination.totalCount > searchResult!!.pagination.offset &&
+                    layoutManager.findLastCompletelyVisibleItemPosition() >= viewModel.searchResultsRecyclerAdapter.value?.itemCount!! - LOAD_MORE_ITEMS_OFFSET
                 ) {
-                    val itemsCountInAdapter: Int = searchResultsRecyclerAdapter?.itemCount!!
+                    val itemsCountInAdapter: Int =
+                        viewModel.searchResultsRecyclerAdapter.value?.itemCount!!
                     val leftToLoadGifs =
-                        searchResult.pagination.totalCount - itemsCountInAdapter
+                        searchResult!!.pagination.totalCount - itemsCountInAdapter
 
 
                     when {
                         leftToLoadGifs >= SEARCH_RESULTS_PER_PAGE -> {
                             loadSearchResults(
-                                searchTerm,
+                                searchTerm!!,
                                 itemsCountInAdapter + SEARCH_RESULTS_PER_PAGE
                             )
                         }
                         else -> {
                             loadSearchResults(
-                                searchTerm,
+                                searchTerm!!,
                                 itemsCountInAdapter + leftToLoadGifs - 1
                             )
                         }
                     }
-
                 }
             }
         })
@@ -95,23 +132,27 @@ class MainActivity : AppCompatActivity(), Runnable {
     @SuppressLint("NotifyDataSetChanged")
     private fun initInternalEventObservers() {
         viewModel.searchResult.observe(this) {
-            val itemsCountInAdapter: Int = searchResultsRecyclerAdapter?.itemCount!!
-            val gifImageList: List<GifImage> = processSearchResults(it)
+            it.getContentIfNotHandled()?.let {
+                val itemsCountInAdapter: Int =
+                    viewModel.searchResultsRecyclerAdapter.value?.itemCount!!
+                val gifImageList: List<GifImage> = processSearchResults(it)
 
-            if (it.pagination.offset != 0) {
-                searchResultsRecyclerAdapter?.appendList(gifImageList)
-                searchResultsRecyclerAdapter?.notifyItemRangeInserted(
-                    itemsCountInAdapter,
-                    itemsCountInAdapter + gifImageList.size - 1
-                )
-            } else {
-                searchResultsRecyclerAdapter?.setList(gifImageList)
-                searchResultsRecyclerAdapter?.notifyDataSetChanged()
+                if (it.pagination.offset != 0) {
+                    viewModel.searchResultsRecyclerAdapter.value?.appendList(gifImageList)
+                    viewModel.searchResultsRecyclerAdapter.value?.notifyItemRangeInserted(
+                        itemsCountInAdapter,
+                        itemsCountInAdapter + gifImageList.size - 1
+                    )
+                } else {
+                    viewModel.searchResultsRecyclerAdapter.value?.setList(gifImageList)
+                    viewModel.searchResultsRecyclerAdapter.value?.notifyDataSetChanged()
+                }
             }
         }
 
-        viewModel.searchTerm.observe(this) {
-            if (it.isNotBlank()) {
+        viewModel.searchTermEvent.observe(this) {
+            it.getContentIfNotHandled()?.let {
+                viewModel.searchTerm.value = it
                 searchJobHandler?.removeCallbacks(this)
                 launchSearchHandler()
             }
@@ -124,8 +165,10 @@ class MainActivity : AppCompatActivity(), Runnable {
     }
 
     override fun run() {
-        viewModel.searchTerm.value?.let {
-            loadSearchResults(it, 0)
+        viewModel.searchTermEvent.value?.let {
+            it.peekContent().let {
+                loadSearchResults(it, 0)
+            }
         }
     }
 
@@ -161,7 +204,7 @@ class MainActivity : AppCompatActivity(), Runnable {
                         val dataResponse: GifImageSearchResult? = response.body()
 
                         if (dataResponse != null) {
-                            viewModel.searchResult.value = dataResponse
+                            viewModel.searchResult.value = LiveDataEvent(dataResponse)
                         } else {
                             Toast.makeText(
                                 this@MainActivity,
@@ -187,9 +230,10 @@ class MainActivity : AppCompatActivity(), Runnable {
     }
 
     companion object {
-        const val API_KEY: String = ""
+        const val API_KEY: String = "lO56m5McVtCSbbX2aisEOUJpPxyAbqOI"
         const val SEARCH_RESULTS_PER_PAGE: Int = 50
         const val SEARCH_REQUEST_DELAY: Long = 300
         const val LOAD_MORE_ITEMS_OFFSET: Int = 13
+        const val RECYCLER_VIEW_COLUMNS: Int = 2
     }
 }
