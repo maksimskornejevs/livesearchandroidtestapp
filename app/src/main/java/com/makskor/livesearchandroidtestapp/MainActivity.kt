@@ -51,7 +51,9 @@ class MainActivity : AppCompatActivity(), Runnable {
                 val currentSearchTerm: String? = viewModel.searchTerm.value
                 val editedSearchTerm: String = s.toString()
                 if (editedSearchTerm.isNotEmpty() && currentSearchTerm != editedSearchTerm) {
-                    viewModel.searchTermEvent.value = LiveDataEvent(s.toString())
+                    viewModel.searchTerm.value = editedSearchTerm
+                    searchJobHandler?.removeCallbacks(this@MainActivity)
+                    launchSearchHandler()
                 }
             }
         })
@@ -76,15 +78,8 @@ class MainActivity : AppCompatActivity(), Runnable {
                 super.onScrolled(recyclerView, dx, dy)
 
                 val layoutManager = (recyclerView.layoutManager as GridLayoutManager)
-                var searchTerm: String? = null
+                val searchTerm: String? = viewModel.searchTerm.value
                 var searchResult: GifImageSearchResult? = null
-
-
-                viewModel.searchTermEvent.value?.let {
-                    it.peekContent().let {
-                        searchTerm = it
-                    }
-                }
 
                 viewModel.searchResult.value?.let {
                     it.peekContent().let {
@@ -95,7 +90,7 @@ class MainActivity : AppCompatActivity(), Runnable {
 
                 if (!isLoadInProgress &&
                     searchTerm != null &&
-                    searchTerm!!.isNotBlank() &&
+                    searchTerm.isNotBlank() &&
                     searchResult != null &&
                     searchResult!!.pagination.totalCount > searchResult!!.pagination.offset &&
                     layoutManager.findLastCompletelyVisibleItemPosition() >= viewModel.searchResultsRecyclerAdapter.value?.itemCount!! - LOAD_MORE_ITEMS_OFFSET
@@ -109,13 +104,13 @@ class MainActivity : AppCompatActivity(), Runnable {
                     when {
                         leftToLoadGifs >= SEARCH_RESULTS_PER_PAGE -> {
                             loadSearchResults(
-                                searchTerm!!,
+                                searchTerm,
                                 itemsCountInAdapter + SEARCH_RESULTS_PER_PAGE
                             )
                         }
                         else -> {
                             loadSearchResults(
-                                searchTerm!!,
+                                searchTerm,
                                 itemsCountInAdapter + leftToLoadGifs - 1
                             )
                         }
@@ -151,14 +146,6 @@ class MainActivity : AppCompatActivity(), Runnable {
                 }
             }
         }
-
-        viewModel.searchTermEvent.observe(this) {
-            it.getContentIfNotHandled()?.let {
-                viewModel.searchTerm.value = it
-                searchJobHandler?.removeCallbacks(this)
-                launchSearchHandler()
-            }
-        }
     }
 
     private fun launchSearchHandler() {
@@ -167,10 +154,8 @@ class MainActivity : AppCompatActivity(), Runnable {
     }
 
     override fun run() {
-        viewModel.searchTermEvent.value?.let {
-            it.peekContent().let {
+        viewModel.searchTerm.value?.let {
                 loadSearchResults(it, 0)
-            }
         }
     }
 
